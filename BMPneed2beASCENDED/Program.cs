@@ -12,6 +12,8 @@ using System.Drawing.Imaging;
 using System.Drawing.Drawing2D;
 using System.Threading;
 using System.Windows.Forms;
+using System.Diagnostics;
+
 namespace BMPneed2beASCENDED
 {
     class Program
@@ -19,55 +21,69 @@ namespace BMPneed2beASCENDED
         //[STAThread]
         static void Main(string[] args)
         {
-
+            string filename = "C:\\Users\\solsa\\Downloads\\71986497_p0_master1200.jpg";
             //OpenFileDialog okok = new OpenFileDialog();
             //okok.CheckFileExists = true;
-            string filename = "C:\\Users\\solsa\\Downloads\\73065890_p0_master1200.jpg";
             //if (okok.ShowDialog() == DialogResult.OK)
             //{
             //    filename = okok.FileName;
-            //}
+            //}(char)254u
             //"C:\\Users\\solsa\\OneDrive\\Pictures\\558122_325400004221410_33691947_n.jpg";
             Bitmap sourceBitmap = new Bitmap(Image.FromFile(filename));
             var resultBitmap = somecontrast(sourceBitmap,20);
 
             //resultBitmap.Save("what.bmp");
-            int width = 250, height = resultBitmap.Height * width / resultBitmap.Width;
+            int width = 300, height = resultBitmap.Height * width / resultBitmap.Width;
             var destImage = new Bitmap(
                 resultBitmap.GetThumbnailImage(width, height, null, IntPtr.Zero));
             destImage = colorclustcompress(destImage, 15);
             //Console.BackgroundColor = Color.Transparent;
-            for(int i = 0; i < destImage.Height; i++)
+            consoleimageoutput(destImage);
+        }
+        public static void consoleimageoutput(Bitmap dat)
+        {
+            const char thatchar = '■';
+            string buf = "";
+            Color lstclr = dat.GetPixel(0, 0);
+            for (int i = 0; i < dat.Height; i++)
             {
-                for(int j = 0; j < destImage.Width; j++)
+                for (int j = 0; j < dat.Width; j++)
                 {
-                    Console.Write("뷁", destImage.GetPixel(j, i));
+                    var tmp = dat.GetPixel(j, i);
+                    if (lstclr != tmp)
+                    {
+                        Console.Write(buf, lstclr);
+                        lstclr = tmp;
+                        buf = "";// +thatchar;
+                    }
+                    buf += thatchar;
                     //Thread.Sleep(10);
                 }
-                Console.WriteLine();
+                buf += Environment.NewLine;
+                //Console.WriteLine();
             }
-            
+            Console.Write(buf, lstclr);
         }
         public static Bitmap colorclustcompress(Bitmap src, int colorcnt)
         {
             Bitmap dst = new Bitmap(src.Width, src.Height);
-            List<Color> colorset = new List<Color>();
-
+            Color[] clist = new Color[src.Width*src.Height];
+            int hi = 0;
             for (int i = 0; i < src.Height; i++)
             {
                 for (int j = 0; j < src.Width; j++)
                 {
                     Color cc = src.GetPixel(j, i);
-                    if (!colorset.Contains(cc))
+                    //if (!colorset.Contains(cc))
                     {
-                        colorset.Add(cc);
+                        clist[hi++]=cc;
                     }
                 }
             }
-
+            var colorset = clist.Distinct().ToArray();
             Color[] evcolors = new Color[colorcnt];
             Color[] prevevcolors = new Color[colorcnt];
-            int[] labels = new int[colorset.Count];
+            int[] labels = new int[colorset.Length];
             bool chksame()
             {
                 foreach (var i in evcolors)
@@ -78,7 +94,7 @@ namespace BMPneed2beASCENDED
             }
             void calclabel()
             {
-                for(int i = 0; i < colorset.Count; i++)
+                for(int i = 0; i < colorset.Length; i++)
                 {
                     int minival = int.MaxValue;
                     int minidx = 0;
@@ -128,6 +144,25 @@ namespace BMPneed2beASCENDED
                 calclabel();
                 calcevcolor();
             }
+            //problem here
+            //Image im = dst;//Image.FromHbitmap(dst.GetHbitmap());
+            Graphics g = Graphics.FromImage(dst);
+            // Set the image attribute's color mappings
+            ColorMap[] colorMap = new ColorMap[colorset.Length];
+            for(int i = 0; i < colorset.Length; i++)
+            {
+                colorMap[i] = new ColorMap();
+                colorMap[i].OldColor = colorset[i];
+                colorMap[i].NewColor = evcolors[labels[i]];
+            }
+            ImageAttributes attr = new ImageAttributes();
+            attr.SetRemapTable(colorMap);
+            // Draw using the color map
+            Rectangle rect = new Rectangle(0, 0, dst.Width, dst.Height);
+            g.DrawImage(src, rect, 0, 0, rect.Width, rect.Height, GraphicsUnit.Pixel, attr);
+            g.Save();
+            //dst = new Bitmap(im);
+            /*
             for (int i = 0; i < src.Height; i++)
             {
                 for (int j = 0; j < src.Width; j++)
@@ -137,7 +172,7 @@ namespace BMPneed2beASCENDED
                     while (colorset[++l] != k);
                     dst.SetPixel(j, i, evcolors[labels[l]]);
                 }
-            }
+            }*/
             return dst;
         }
         public static Bitmap somecontrast(Bitmap sourceBitmap,double cl)
