@@ -11,18 +11,28 @@ using System.Runtime.InteropServices;
 using System.Drawing.Imaging;
 using System.Drawing.Drawing2D;
 using System.Threading;
+using System.Windows.Forms;
 namespace BMPneed2beASCENDED
 {
     class Program
     {
+        //[STAThread]
         static void Main(string[] args)
         {
-            string filename = "C:\\Users\\solsa\\Downloads\\73065890_p0_master1200.jpg";//"C:\\Users\\solsa\\OneDrive\\Pictures\\558122_325400004221410_33691947_n.jpg";
+
+            //OpenFileDialog okok = new OpenFileDialog();
+            //okok.CheckFileExists = true;
+            string filename = "C:\\Users\\solsa\\Downloads\\73065890_p0_master1200.jpg";
+            //if (okok.ShowDialog() == DialogResult.OK)
+            //{
+            //    filename = okok.FileName;
+            //}
+            //"C:\\Users\\solsa\\OneDrive\\Pictures\\558122_325400004221410_33691947_n.jpg";
             Bitmap sourceBitmap = new Bitmap(Image.FromFile(filename));
-            var resultBitmap = sourceBitmap;//somecontrast(sourceBitmap);
+            var resultBitmap = somecontrast(sourceBitmap,20);
 
             //resultBitmap.Save("what.bmp");
-            int width = 200, height = resultBitmap.Height * width / resultBitmap.Width;
+            int width = 250, height = resultBitmap.Height * width / resultBitmap.Width;
             var destImage = new Bitmap(
                 resultBitmap.GetThumbnailImage(width, height, null, IntPtr.Zero));
             destImage = colorclustcompress(destImage, 15);
@@ -31,7 +41,7 @@ namespace BMPneed2beASCENDED
             {
                 for(int j = 0; j < destImage.Width; j++)
                 {
-                    Console.Write("■", destImage.GetPixel(j, i));
+                    Console.Write("뷁", destImage.GetPixel(j, i));
                     //Thread.Sleep(10);
                 }
                 Console.WriteLine();
@@ -99,8 +109,13 @@ namespace BMPneed2beASCENDED
                 }
                 for(int i = 0; i < colorcnt; i++)
                 {
-                    if (lblcnt[i] == 0) continue;
-                    evcolors[i] = Color.FromArgb(evpoint[i,0]/lblcnt[i], evpoint[i, 1] / lblcnt[i], evpoint[i, 2] / lblcnt[i]);
+                    if (lblcnt[i] == 0)
+                    {
+                        evcolors[i] = Color.White;
+                    }
+                    else {
+                        evcolors[i] = Color.FromArgb(evpoint[i, 0] / lblcnt[i], evpoint[i, 1] / lblcnt[i], evpoint[i, 2] / lblcnt[i]);
+                    }
                 }
             }
             for(int i = 0; i < colorcnt; i++)
@@ -125,7 +140,7 @@ namespace BMPneed2beASCENDED
             }
             return dst;
         }
-        public static Bitmap somecontrast(Bitmap sourceBitmap)
+        public static Bitmap somecontrast(Bitmap sourceBitmap,double cl)
         {
             BitmapData sourceData = sourceBitmap.LockBits(new Rectangle(0, 0,
                             sourceBitmap.Width, sourceBitmap.Height),
@@ -136,51 +151,32 @@ namespace BMPneed2beASCENDED
 
 
             Marshal.Copy(sourceData.Scan0, pixelBuffer, 0, pixelBuffer.Length);
-
-
             sourceBitmap.UnlockBits(sourceData);
-
-
-            double contrastLevel = Math.Pow((100.0 + 20.0) / 100.0, 2);
-
-
+            double contrastLevel = Math.Pow((100.0 + cl) / 100.0, 2);
             double blue = 0;
             double green = 0;
             double red = 0;
-
-
             for (int k = 0; k + 4 < pixelBuffer.Length; k += 4)
             {
                 blue = ((((pixelBuffer[k] / 255.0) - 0.5) *
                             contrastLevel) + 0.5) * 255.0;
-
-
                 green = ((((pixelBuffer[k + 1] / 255.0) - 0.5) *
                             contrastLevel) + 0.5) * 255.0;
-
-
                 red = ((((pixelBuffer[k + 2] / 255.0) - 0.5) *
                             contrastLevel) + 0.5) * 255.0;
-
-
                 if (blue > 255)
                 { blue = 255; }
                 else if (blue < 0)
                 { blue = 0; }
-
-
                 if (green > 255)
                 { green = 255; }
                 else if (green < 0)
                 { green = 0; }
-
-
                 if (red > 255)
                 { red = 255; }
                 else if (red < 0)
                 { red = 0; }
-
-
+                
                 pixelBuffer[k] = (byte)blue;
                 pixelBuffer[k + 1] = (byte)green;
                 pixelBuffer[k + 2] = (byte)red;
@@ -203,25 +199,11 @@ namespace BMPneed2beASCENDED
         // Convert an HLS value into an RGB value.
         public static Color HlsToRgb(double h, double l, double s)
         {
-            double p2;
-            if (l <= 0.5) p2 = l * (1 + s);
-            else p2 = l + s - l * s;
-
-            double p1 = 2 * l - p2;
-            double double_r, double_g, double_b;
-            if (s == 0)
-            {
-                double_r = l;
-                double_g = l;
-                double_b = l;
-            }
-            else
-            {
-                double_r = QqhToRgb(p1, p2, h + 120);
-                double_g = QqhToRgb(p1, p2, h);
+            double p2 = 0.75;// 1/2 * 3/2
+            double p1 = 1.0 - p2;
+            double double_r = QqhToRgb(p1, p2, h + 120),
+                double_g = QqhToRgb(p1, p2, h), 
                 double_b = QqhToRgb(p1, p2, h - 120);
-            }
-
             // Convert RGB to the 0 to 255 range.
             return Color.FromArgb((int)(double_r * 255.0), (int)(double_g * 255.0), (int)(double_b * 255.0));
         }
