@@ -18,30 +18,85 @@ namespace BMPneed2beASCENDED
 {
     class Program
     {
-        //[STAThread]
+        [StructLayout(LayoutKind.Sequential)]
+        public struct RECT
+        {
+            public int Left;        // x position of upper-left corner
+            public int Top;         // y position of upper-left corner
+            public int Right;       // x position of lower-right corner
+            public int Bottom;      // y position of lower-right corner
+        }
+
+        [DllImport("user32.dll", SetLastError = true)]
+        static extern bool GetWindowRect(IntPtr hwnd, out RECT lpRect);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        static extern IntPtr GetConsoleWindow();
+
+        [DllImport("user32.dll", SetLastError = true)]
+        static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, int uFlags);
+
         static void Main(string[] args)
         {
-            string filename = "C:\\Users\\solsa\\Downloads\\71986497_p0_master1200.jpg";
-            //OpenFileDialog okok = new OpenFileDialog();
-            //okok.CheckFileExists = true;
-            //if (okok.ShowDialog() == DialogResult.OK)
-            //{
-            //    filename = okok.FileName;
-            //}(char)254u
-            //"C:\\Users\\solsa\\OneDrive\\Pictures\\558122_325400004221410_33691947_n.jpg";
-            Bitmap sourceBitmap = new Bitmap(Image.FromFile(filename));
-            var resultBitmap = somecontrast(sourceBitmap,20);
+            Console.Title = "CHIKA! DANCE! by P4B";
+            string videofile = "out.mp4", fps = "25";
+            if (Directory.Exists("frames")) Directory.Delete("frames", true);
+            if (Directory.Exists("rendered")) Directory.Delete("rendered", true);
+            Thread.Sleep(1000);
+            Directory.CreateDirectory("frames");
+            Directory.CreateDirectory("rendered");
+            //int;
+            var psi = new ProcessStartInfo("G:\\ffmpeg\\bin\\ffmpeg", 
+                    $"-i \"{videofile}\" -vf fps={fps} frames\\%010d.jpg -hide_banner");
+            Process.Start(psi).WaitForExit();
 
-            //resultBitmap.Save("what.bmp");
-            int width = 300, height = resultBitmap.Height * width / resultBitmap.Width;
-            var destImage = new Bitmap(
-                resultBitmap.GetThumbnailImage(width, height, null, IntPtr.Zero));
-            destImage = colorclustcompress(destImage, 15);
-            //Console.BackgroundColor = Color.Transparent;
-            consoleimageoutput(destImage);
+            Bitmap basePic = new Bitmap(Image.FromFile($"frames\\{1:D10}.jpg"));
+            int width = 300, height = basePic.Height * width / basePic.Width;
+            Console.SetWindowSize(width * 2 + 1, height+2);
+            IntPtr hwndhwnd = GetConsoleWindow();
+            SetWindowPos(hwndhwnd, IntPtr.Zero, 
+                Screen.AllScreens[0].Bounds.Left, Screen.AllScreens[0].Bounds.Top, 1337, 1337, 1);
+
+            RECT ks = new RECT();
+            GetWindowRect(hwndhwnd, out ks);
+            Rectangle bounds = new Rectangle(ks.Left, ks.Top, ks.Right - ks.Left, ks.Bottom - ks.Top);
+            int frame = 0;
+            string filename;
+
+            Bitmap bitmap = new Bitmap(bounds.Width, bounds.Height);
+            var pt = new Point(bounds.Left, bounds.Top);
+            Graphics g = Graphics.FromImage(bitmap);
+
+            while (File.Exists(filename= $"frames\\{++frame:D10}.jpg"))
+            {
+                Console.Title = "CHIKA! DANCE! by P4B frames : " + frame.ToString();
+                using (Bitmap sourceBitmap = new Bitmap(Image.FromFile(filename)))
+                {
+                    var resultBitmap = somecontrast(sourceBitmap, 20);
+                    var destImage = new Bitmap(
+                        resultBitmap.GetThumbnailImage(width, height, null, IntPtr.Zero));
+                    destImage = colorclustcompress(destImage, 15);//forcedpalette(destImage,new Color[] { Color.White,Color.Black});//
+                    consoleimageoutput(destImage);
+                    Thread.Sleep(30);
+                    g.CopyFromScreen(pt, Point.Empty, bounds.Size);
+                    bitmap.Save($"rendered\\{frame:D10}.jpg", ImageFormat.Jpeg);
+                    Console.Clear();
+                    resultBitmap.Dispose();
+                    destImage.Dispose();
+                }
+            }
+
+            psi = new ProcessStartInfo("G:\\ffmpeg\\bin\\ffmpeg",
+                    $"-i {filename} tmpsound.aac");
+
+            psi = new ProcessStartInfo("G:\\ffmpeg\\bin\\ffmpeg",
+                    $"-framerate {0} -i rendered\\%10d.jpg -i tmpsound.aac {DateTime.Now.ToString()}.mp4");
+            Process.Start(psi).WaitForExit();
         }
         public static void consoleimageoutput(Bitmap dat)
         {
+            //Console.ResetColor();
+            Console.ReplaceAllColorsWithDefaults();
             const char thatchar = '■';
             string buf = "";
             Color lstclr = dat.GetPixel(0, 0);
@@ -74,10 +129,7 @@ namespace BMPneed2beASCENDED
                 for (int j = 0; j < src.Width; j++)
                 {
                     Color cc = src.GetPixel(j, i);
-                    //if (!colorset.Contains(cc))
-                    {
-                        clist[hi++]=cc;
-                    }
+                    clist[hi++]=cc;
                 }
             }
             var colorset = clist.Distinct().ToArray();
@@ -144,8 +196,6 @@ namespace BMPneed2beASCENDED
                 calclabel();
                 calcevcolor();
             }
-            //problem here
-            //Image im = dst;//Image.FromHbitmap(dst.GetHbitmap());
             Graphics g = Graphics.FromImage(dst);
             // Set the image attribute's color mappings
             ColorMap[] colorMap = new ColorMap[colorset.Length];
@@ -161,18 +211,55 @@ namespace BMPneed2beASCENDED
             Rectangle rect = new Rectangle(0, 0, dst.Width, dst.Height);
             g.DrawImage(src, rect, 0, 0, rect.Width, rect.Height, GraphicsUnit.Pixel, attr);
             g.Save();
-            //dst = new Bitmap(im);
-            /*
+            return dst;
+        }
+        public static Bitmap forcedpalette(Bitmap src, Color[] evcolors)
+        {
+            Bitmap dst = new Bitmap(src.Width, src.Height);
+            Color[] clist = new Color[src.Width * src.Height];
+            int hi = 0;
             for (int i = 0; i < src.Height; i++)
             {
                 for (int j = 0; j < src.Width; j++)
                 {
-                    Color k = src.GetPixel(j, i);
-                    int l = -1;
-                    while (colorset[++l] != k);
-                    dst.SetPixel(j, i, evcolors[labels[l]]);
+                    Color cc = src.GetPixel(j, i);
+                    clist[hi++] = cc;
                 }
-            }*/
+            }
+            var colorset = clist.Distinct().ToArray();
+            int[] labels = new int[colorset.Length];
+            for (int i = 0; i < colorset.Length; i++)
+            {
+                int minival = int.MaxValue;
+                int minidx = 0;
+                for (int j = 0; j <evcolors.Length; j++)
+                {
+                    int diff = Math.Abs(colorset[i].R - evcolors[j].R);
+                    diff += Math.Abs(colorset[i].G - evcolors[j].G);
+                    diff += Math.Abs(colorset[i].B - evcolors[j].B);
+                    if (diff < minival)
+                    {
+                        minival = diff;
+                        minidx = j;
+                    }
+                }
+                labels[i] = minidx;
+            }
+            Graphics g = Graphics.FromImage(dst);
+            // Set the image attribute's color mappings
+            ColorMap[] colorMap = new ColorMap[colorset.Length];
+            for (int i = 0; i < colorset.Length; i++)
+            {
+                colorMap[i] = new ColorMap();
+                colorMap[i].OldColor = colorset[i];
+                colorMap[i].NewColor = evcolors[labels[i]];
+            }
+            ImageAttributes attr = new ImageAttributes();
+            attr.SetRemapTable(colorMap);
+            // Draw using the color map
+            Rectangle rect = new Rectangle(0, 0, dst.Width, dst.Height);
+            g.DrawImage(src, rect, 0, 0, rect.Width, rect.Height, GraphicsUnit.Pixel, attr);
+            g.Save();
             return dst;
         }
         public static Bitmap somecontrast(Bitmap sourceBitmap,double cl)
@@ -181,9 +268,7 @@ namespace BMPneed2beASCENDED
                             sourceBitmap.Width, sourceBitmap.Height),
                             ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
 
-
             byte[] pixelBuffer = new byte[sourceData.Stride * sourceData.Height];
-
 
             Marshal.Copy(sourceData.Scan0, pixelBuffer, 0, pixelBuffer.Length);
             sourceBitmap.UnlockBits(sourceData);
@@ -217,15 +302,10 @@ namespace BMPneed2beASCENDED
                 pixelBuffer[k + 2] = (byte)red;
             }
 
-
             Bitmap resultBitmap = new Bitmap(sourceBitmap.Width, sourceBitmap.Height);
-
-
             BitmapData resultData = resultBitmap.LockBits(new Rectangle(0, 0,
                                         resultBitmap.Width, resultBitmap.Height),
                                         ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
-
-
             Marshal.Copy(pixelBuffer, 0, resultData.Scan0, pixelBuffer.Length);
             resultBitmap.UnlockBits(resultData);
             return resultBitmap;
