@@ -38,20 +38,20 @@ namespace BMPneed2beASCENDED
 
         static void Main(string[] args)
         {
-            Console.Title = "CHIKA! DANCE! by P4B";
-            string videofile = "out.mp4", fps = "25";
-            if (Directory.Exists("frames")) Directory.Delete("frames", true);
-            if (Directory.Exists("rendered")) Directory.Delete("rendered", true);
+            Console.Title = "Realtime Touhou! by P4B";
+            /*
+            string videofile = "C:\\Users\\BREADY\\Videos\\badapple.mp4", fps = "30";
+            if (Directory.Exists("badapplefr")) Directory.Delete("badapplefr", true);
             Thread.Sleep(1000);
-            Directory.CreateDirectory("frames");
-            Directory.CreateDirectory("rendered");
+            Directory.CreateDirectory("badapplefr");
             //int;
             var psi = new ProcessStartInfo("G:\\ffmpeg\\bin\\ffmpeg", 
-                    $"-i \"{videofile}\" -vf fps={fps} frames\\%010d.jpg -hide_banner");
+                    $"-i \"{videofile}\" -vf fps={fps} badapplefr\\%010d.jpg -hide_banner");
             Process.Start(psi).WaitForExit();
-
-            Bitmap basePic = new Bitmap(Image.FromFile($"frames\\{1:D10}.jpg"));
-            int width = 300, height = basePic.Height * width / basePic.Width;
+            return;
+            */
+            Bitmap basePic = new Bitmap(Image.FromFile($"badapplefr\\{1:D10}.jpg"));
+            int width = 200, height = basePic.Height * width / basePic.Width;
             Console.SetWindowSize(width * 2 + 1, height+2);
             IntPtr hwndhwnd = GetConsoleWindow();
             SetWindowPos(hwndhwnd, IntPtr.Zero, 
@@ -66,32 +66,69 @@ namespace BMPneed2beASCENDED
             Bitmap bitmap = new Bitmap(bounds.Width, bounds.Height);
             var pt = new Point(bounds.Left, bounds.Top);
             Graphics g = Graphics.FromImage(bitmap);
-
-            while (File.Exists(filename= $"frames\\{++frame:D10}.jpg"))
+            string[] stringframe = new string[6580];
+            
+            while (File.Exists(filename= $"badapplefr\\{++frame:D10}.jpg"))
             {
-                Console.Title = "CHIKA! DANCE! by P4B frames : " + frame.ToString();
+                //Console.Title = "touhou realtime buffered frames : " + frame.ToString();
                 using (Bitmap sourceBitmap = new Bitmap(Image.FromFile(filename)))
                 {
                     var resultBitmap = somecontrast(sourceBitmap, 20);
+
                     var destImage = new Bitmap(
                         resultBitmap.GetThumbnailImage(width, height, null, IntPtr.Zero));
-                    destImage = colorclustcompress(destImage, 15);//forcedpalette(destImage,new Color[] { Color.White,Color.Black});//
-                    consoleimageoutput(destImage);
-                    Thread.Sleep(30);
-                    g.CopyFromScreen(pt, Point.Empty, bounds.Size);
-                    bitmap.Save($"rendered\\{frame:D10}.jpg", ImageFormat.Jpeg);
-                    Console.Clear();
+                    destImage = forcedpalette(destImage,new Color[] { Color.White,Color.Black});
+                    stringframe[frame] = stringblackwhiteoutput(destImage);
                     resultBitmap.Dispose();
                     destImage.Dispose();
+                    Console.Title = "touhou realtime rendering: " + frame.ToString();
                 }
             }
-
+            //Console.Title = "touhou realtime playing: " + frame.ToString();
+            int curframe = 0;
+            Console.ReplaceAllColorsWithDefaults();
+            Console.BackgroundColor = Color.White;
+            Stopwatch k = Stopwatch.StartNew();
+            while (curframe<stringframe.Length)
+            {
+                Console.Clear();
+                Console.Write(stringframe[curframe]);
+                Console.Title = "touhou realtime playing: " + curframe.ToString();
+                curframe = (int)(k.ElapsedMilliseconds * 30.0 / 1000.0);
+            }
+            /*
             psi = new ProcessStartInfo("G:\\ffmpeg\\bin\\ffmpeg",
                     $"-i {filename} tmpsound.aac");
 
             psi = new ProcessStartInfo("G:\\ffmpeg\\bin\\ffmpeg",
                     $"-framerate {0} -i rendered\\%10d.jpg -i tmpsound.aac {DateTime.Now.ToString()}.mp4");
             Process.Start(psi).WaitForExit();
+            */
+        }
+        public static string stringblackwhiteoutput(Bitmap dat)
+        {
+            //Console.ResetColor();
+            //Console.ReplaceAllColorsWithDefaults();
+            const char blackchar = '■',whitechar='.';
+            string buf = "";
+            Color lstclr = dat.GetPixel(0, 0);
+            for (int i = 0; i < dat.Height; i++)
+            {
+                for (int j = 0; j < dat.Width; j++)
+                {
+                    var tmp = dat.GetPixel(j, i);
+                    if (tmp.R == 255)
+                    {
+                        buf += whitechar;
+                    }
+                    else
+                    {
+                        buf += blackchar;
+                    }
+                }
+                buf += Environment.NewLine;
+            }
+            return buf;
         }
         public static void consoleimageoutput(Bitmap dat)
         {
@@ -114,7 +151,7 @@ namespace BMPneed2beASCENDED
                     buf += thatchar;
                     //Thread.Sleep(10);
                 }
-                buf += Environment.NewLine;
+                buf += '\n';
                 //Console.WriteLine();
             }
             Console.Write(buf, lstclr);
@@ -260,6 +297,7 @@ namespace BMPneed2beASCENDED
             Rectangle rect = new Rectangle(0, 0, dst.Width, dst.Height);
             g.DrawImage(src, rect, 0, 0, rect.Width, rect.Height, GraphicsUnit.Pixel, attr);
             g.Save();
+            g.Dispose();
             return dst;
         }
         public static Bitmap somecontrast(Bitmap sourceBitmap,double cl)
