@@ -51,7 +51,7 @@ namespace BMPneed2beASCENDED
             return;
             */
             Bitmap basePic = new Bitmap(Image.FromFile($"badapplefr\\{1:D10}.jpg"));
-            int width = 200, height = basePic.Height * width / basePic.Width;
+            int width = 100, height = basePic.Height * width / basePic.Width;
             Console.SetWindowSize(width * 2 + 1, height+2);
             IntPtr hwndhwnd = GetConsoleWindow();
             SetWindowPos(hwndhwnd, IntPtr.Zero, 
@@ -66,35 +66,66 @@ namespace BMPneed2beASCENDED
             Bitmap bitmap = new Bitmap(bounds.Width, bounds.Height);
             var pt = new Point(bounds.Left, bounds.Top);
             Graphics g = Graphics.FromImage(bitmap);
-            string[] stringframe = new string[6580];
-            
-            while (File.Exists(filename= $"badapplefr\\{++frame:D10}.jpg"))
+            string[][] stringframe = new string[6572][];
+            int bufsize = 10000 - 1;
+            Console.SetBufferSize(bufsize, bufsize);
+
+
+            Parallel.For(1, 6572, (i) =>
             {
+                filename = $"badapplefr\\{i:D10}.jpg";
                 //Console.Title = "touhou realtime buffered frames : " + frame.ToString();
                 using (Bitmap sourceBitmap = new Bitmap(Image.FromFile(filename)))
                 {
-                    var resultBitmap = somecontrast(sourceBitmap, 20);
+                    using (Bitmap ti = (Bitmap)sourceBitmap.GetThumbnailImage(width, height, null, IntPtr.Zero))
+                    {
+                        using (Bitmap destImage = forcedpalette(ti, new Color[] { Color.White, Color.Black }))
+                        {
+                            stringframe[i-1] = stringblackwhiteoutput(destImage).Split('\n');
+                            //Console.Write(stringframe[i]);
+                            //Console.Write(stringblackwhiteoutput(destImage));
+                        }
+                    }
+                }
+            });
 
-                    var destImage = new Bitmap(
-                        resultBitmap.GetThumbnailImage(width, height, null, IntPtr.Zero));
-                    destImage = forcedpalette(destImage,new Color[] { Color.White,Color.Black});
-                    stringframe[frame] = stringblackwhiteoutput(destImage);
-                    resultBitmap.Dispose();
-                    destImage.Dispose();
-                    Console.Title = "touhou realtime rendering: " + frame.ToString();
+            int garo = bufsize / width /2;
+
+
+            Console.Title = "touhou realtime readying frames : " + frame.ToString();
+            for (int i=0;i< stringframe.Length/garo; i++)
+            {
+                for(int j = 0; j < height; j++)
+                {
+                    for(int k = 0; k < garo; k++)
+                    {
+                        Console.Write(stringframe[garo * i + k][j]);
+                    }
+                    Console.WriteLine();
+                    //Thread.Sleep(1000);
                 }
             }
+            
+            //for(int i=0;i<bufsize/height;i++)
+            /*
+            foreach(var kh in stringframe)
+            {
+                Console.Write(kh);
+            }
+            */
             //Console.Title = "touhou realtime playing: " + frame.ToString();
             int curframe = 0;
             Console.ReplaceAllColorsWithDefaults();
             Console.BackgroundColor = Color.White;
-            Stopwatch k = Stopwatch.StartNew();
+            Stopwatch sk = Stopwatch.StartNew();
             while (curframe<stringframe.Length)
             {
-                Console.Clear();
-                Console.Write(stringframe[curframe]);
-                Console.Title = "touhou realtime playing: " + curframe.ToString();
-                curframe = (int)(k.ElapsedMilliseconds * 30.0 / 1000.0);
+                Console.CursorTop = height * (curframe / garo);
+                Console.CursorLeft = width * (curframe % garo);
+                //Console.Clear();
+                //Console.Write(stringframe[curframe]);
+                Console.Title = "touhou realtime playing : " + curframe.ToString();
+                curframe = (int)(sk.ElapsedMilliseconds * 30.0 / 1000.0);
             }
             /*
             psi = new ProcessStartInfo("G:\\ffmpeg\\bin\\ffmpeg",
@@ -109,7 +140,7 @@ namespace BMPneed2beASCENDED
         {
             //Console.ResetColor();
             //Console.ReplaceAllColorsWithDefaults();
-            const char blackchar = '■',whitechar='.';
+            const char blackchar = '■',whitechar= '\u25A1';
             string buf = "";
             Color lstclr = dat.GetPixel(0, 0);
             for (int i = 0; i < dat.Height; i++)
@@ -126,7 +157,7 @@ namespace BMPneed2beASCENDED
                         buf += blackchar;
                     }
                 }
-                buf += Environment.NewLine;
+                buf += '\n';//Environment.NewLine;
             }
             return buf;
         }
